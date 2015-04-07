@@ -2,30 +2,22 @@
   "name": "json-rpc-stream",
   "version": "0.0.0",
   "description": "Streaming JSON RPC",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
-  },
-  "author": "Donald Ness <donald.ness@gmail.com>",
-  "license": "MIT",
-  "dependencies": {
-    "JSONStream": "^0.10.0",
-    "event-stream": "^3.3.0",
-    "through": "^2.3.6"
-  },
-  "devDependencies": {},
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/programmarchy/node-json-rpc-stream.git"
-  },
   "keywords": [
     "json",
     "rpc",
     "stream"
   ],
-  "bugs": {
-    "url": "https://github.com/programmarchy/node-json-rpc-stream/issues"
+  "author": "Donald Ness <donald.ness@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/programmarchy/node-json-rpc-stream.git"
   },
-  "homepage": "https://github.com/programmarchy/node-json-rpc-stream"
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "through2": "^0.6.3"
+  }
 }

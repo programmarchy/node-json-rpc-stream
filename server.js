@@ -1,6 +1,5 @@
 var util = require('util')
-var eventStream = require('event-stream')
-var through = require('through')
+var through = require('through2')
 
 var RPCErrors = {
   'PARSE_ERROR':
@@ -15,21 +14,23 @@ var RPCErrors = {
     { code: -32700, message: 'Internal error' },
 }
 
-var RPCServer = function(opts) {
-  var stream = through(function write(data) {
+function RPCServer(opts) {
+  opts = opts || {}
+
+  var stream = through.obj(function (data, enc, next) {
     if (typeof data !== 'object') {
       handleRPCError(req, RPCErrors['PARSE_ERROR'])
+      next()
       return
     }
     stream.emit('message', data)
     if (!('id' in data)) {
       stream.emit('notification', data)
+      next()
     } else {
-      handleRequest(data);
+      handleRequest(data)
+      next()
     }
-  },
-  function end() {
-    stream.queue(null)
   })
 
   var methodImps = {}
@@ -48,11 +49,11 @@ var RPCServer = function(opts) {
     }
   }
 
-  stream.implementSync = function(method, fun, thisArg) {
+  stream.implementSync = function (method, fun, thisArg) {
     implementMethod(method, fun, thisArg, true)
   }
 
-  stream.implementAsync = function(method, fun, thisArg) {
+  stream.implementAsync = function (method, fun, thisArg) {
     implementMethod(method, fun, thisArg, false)
   }
 
@@ -68,25 +69,31 @@ var RPCServer = function(opts) {
       return
     }
 
+    stream.emit('request', req)
+
     var methodImp = methodImps[method]
     var thisArg = methodImp.thisArg || stream
     var args = req['params'] || []
     if (!Array.isArray(args)) {
       args = [args]
     }
-    stream.emit('request', req)
-    var result = methodImp.fun.apply(thisArg, args)
     if (methodImp.sync) {
+      var result = methodImp.fun.apply(thisArg, args)
       var res = createResultResponse(req, result)
       stream.emit('response', req, res)
       queueResponse(res)
-    } else {
-      if (typeof result !== 'function') {
+    } else try {
+      var callback = methodImp.fun.apply(thisArg, args)
+      if (typeof callback !== 'function') {
         handleRPCError(req, RPCErrors['INTERNAL_ERROR'])
       } else {
-        result(function(err, result) {
+        callback(function (err, result) {
           if (err) {
-            handleRPCError(req, err)
+            var res = createErrorResponse(req, RPCErrors['INTERNAL_ERROR'])
+            res.error.data = err
+            res.result = result
+            stream.emit('response', req, res)
+            queueResponse(res)
           } else {
             var res = createResultResponse(req, result)
             stream.emit('response', req, res)
@@ -94,6 +101,8 @@ var RPCServer = function(opts) {
           }
         })
       }
+    } catch (ex) {
+      handleRPCError(req, RPCErrors['INTERNAL_ERROR'])
     }
   }
 
@@ -117,7 +126,7 @@ var RPCServer = function(opts) {
   }
 
   function queueResponse(res) {
-    stream.queue(res)
+    stream.push(res)
   }
 
   return stream

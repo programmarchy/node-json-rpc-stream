@@ -1,42 +1,42 @@
 var util = require('util')
-var eventStream = require('event-stream')
-var through = require('through')
+var through = require('through2')
 
-var RPCClient = function(opts) {
+function RPCClient(opts) {
   opts = opts || {}
 
-  var stream = through(function write(data) {
+  var stream = through.obj(function (data, enc, next) {
     if (data === null) {
       stream.emit('error', TypeError('Argument `data` must not be null.'))
+      next()
       return
     }
     if (typeof data !== 'object') {
       stream.emit('error', TypeError('Argument `data` must be an object.'))
+      next()
       return
     }
     stream.emit('message', data)
     if (!('id' in data)) {
       stream.emit('notification', data)
+      next()
     } else {
       handleResponse(data)
+      next()
     }
-  },
-  function end() {
-    stream.queue(null)
   })
 
-  stream.applyMethod = function(method, fun, params) {
+  stream.applyMethod = function (method, fun, params) {
     var req = createRequest(method, params)
     addPendingRequest(req, fun)
   }
 
-  stream.callMethod = function(method, fun) {
+  stream.callMethod = function (method, fun) {
     var args = [].splice.call(arguments, 2)
     stream.applyMethod(method, fun, args)
   }
 
-  stream.bindMethod = function(method, fun) {
-    return function() {
+  stream.bindMethod = function (method, fun) {
+    return function () {
       var args = [].splice.call(arguments, 0)
       stream.applyMethod(method, fun, args)
     }
@@ -49,11 +49,11 @@ var RPCClient = function(opts) {
     pendingRequests = pendingRequests.concat([
       createPendingRequest(req, fun)
     ])
-    stream.queue(req)
+    stream.push(req)
   }
 
   function removePendingRequest(id) {
-    pendingRequests = pendingRequests.filter(function(pendingRequest) {
+    pendingRequests = pendingRequests.filter(function (pendingRequest) {
       return pendingRequest.id !== id
     })
   }
@@ -80,7 +80,7 @@ var RPCClient = function(opts) {
       removePendingRequest(res.id)
       return
     }
-    var foundPendingRequests = pendingRequests.filter(function(pendingRequest) {
+    var foundPendingRequests = pendingRequests.filter(function (pendingRequest) {
       return res.id === pendingRequest.req.id
     })
     removePendingRequest(res.id)
@@ -95,9 +95,12 @@ var RPCClient = function(opts) {
     var req = pendingRequest.req
     stream.emit('response', req, res)
     var fun = pendingRequest.fun
-    var result = res.result
     if (fun) {
-      fun.call(stream, result)
+      if (res.error) {
+        fun.call(stream, res.error, res.result)
+      } else {
+        fun.call(stream, null, res.result)
+      }
     }
   }
 
