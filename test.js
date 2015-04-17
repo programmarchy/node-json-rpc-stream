@@ -8,11 +8,11 @@ var client = new RPCClient()
 client.pipe(server).pipe(client)
 
 var BluetoothServer = {
-  getAdapterState: function() {
+  getAdapterState: function () {
     console.log('[SERVER]', 'sync', 'getAdapterState')
   },
-  getDevices: function() {
-    return function(cb) {
+  getDevices: function () {
+    return function (cb) {
       console.log('[SERVER]', 'async', 'getDevices')
       if (cb) {
         cb(null, [{
@@ -27,8 +27,8 @@ var BluetoothServer = {
       }
     }
   },
-  connect: function(address) {
-    return function(cb) {
+  connect: function (address) {
+    return function (cb) {
       console.log('[SERVER]', 'async', 'connect', address)
       if (cb) {
         cb(null, true)
@@ -46,15 +46,15 @@ server.implementAsync('getDevices', BluetoothServer.getDevices, BluetoothServer)
 // Asynchronous RPC method implementation with a single argument
 server.implementAsync('connect', BluetoothServer.connect, BluetoothServer)
 
-server.on('error', function(err) {
+server.on('error', function (err) {
   console.error('[SERVER]', '<ERROR>', err)
 })
 
-server.on('request', function(req) {
+server.on('request', function (req) {
   console.log('[SERVER]', '<REQUEST>', req)
 })
 
-server.on('response', function(req, res) {
+server.on('response', function (req, res) {
   console.log('[SERVER]', '<RESPONSE>', res, 'for request:', req)
 })
 
@@ -63,33 +63,37 @@ process.nextTick(function test() {
   client.callMethod('getAdapterState')
 
   // Calls a method with a result
-  client.callMethod('getDevices', function(result) {
-    console.log('[CLIENT]', 'call', 'getDevices', result)
+  client.callMethod('getDevices', function (err, result) {
+    if (err) console.error(err)
+    else console.log('[CLIENT]', 'call', 'getDevices', result)
   })
 
   // Calls a method with a single argument and a result
-  client.callMethod('connect', function(result) {
-    console.log('[CLIENT]', 'call', 'connect', result)
+  client.callMethod('connect', function (err, result) {
+    if (err) console.error(err)
+    else console.log('[CLIENT]', 'call', 'connect', result)
   }, '00-04-52-21-37-b2')
 
   // Binds a method to a function, and calls it, with a single argument and a result
-  client.bindMethod('connect', function(result) {
-    console.log('[CLIENT]', 'bind', 'connect', result)
+  client.bindMethod('connect', function (err, result) {
+    if (err) console.error(err)
+    else console.log('[CLIENT]', 'bind', 'connect', result)
   })('00-04-52-21-37-b2')
 
-  client.applyMethod('connect', function(result) {
-    console.log('[CLIENT]', 'apply', 'connect', result)
+  client.applyMethod('connect', function (err, result) {
+    if (err) console.error(err)
+    else console.log('[CLIENT]', 'apply', 'connect', result)
   },['01-23-45-67-89-AB'])
 })
 
-client.on('error', function(err) {
+client.on('error', function (err) {
   console.error('[CLIENT]', '<ERROR>', err)
 })
 
-client.on('request', function(req) {
+client.on('request', function (req) {
   console.log('[CLIENT]', '<REQUEST>', req)
 })
 
-client.on('response', function(req, res) {
+client.on('response', function (req, res) {
   console.log('[CLIENT]', '<RESPONSE>', res, 'for request:', req)
 })

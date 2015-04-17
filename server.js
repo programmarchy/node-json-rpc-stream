@@ -17,7 +17,7 @@ var RPCErrors = {
 function RPCServer(opts) {
   opts = opts || {}
 
-  var stream = through.obj(function (data, enc, next) {
+  var stream = through.obj(function write(data, enc, next) {
     if (typeof data !== 'object') {
       handleRPCError(req, RPCErrors['PARSE_ERROR'])
       next()
@@ -81,7 +81,7 @@ function RPCServer(opts) {
       var result = methodImp.fun.apply(thisArg, args)
       var res = createResultResponse(req, result)
       stream.emit('response', req, res)
-      queueResponse(res)
+      stream.push(res)
     } else try {
       var callback = methodImp.fun.apply(thisArg, args)
       if (typeof callback !== 'function') {
@@ -89,26 +89,31 @@ function RPCServer(opts) {
       } else {
         callback(function (err, result) {
           if (err) {
-            var res = createErrorResponse(req, RPCErrors['INTERNAL_ERROR'])
-            res.error.data = err
-            res.result = result
-            stream.emit('response', req, res)
-            queueResponse(res)
+            handleInternalError(req, err, result)
           } else {
             var res = createResultResponse(req, result)
             stream.emit('response', req, res)
-            queueResponse(res)
+            stream.push(res)
           }
         })
       }
     } catch (ex) {
-      handleRPCError(req, RPCErrors['INTERNAL_ERROR'])
+      handleInternalError(req, ex)
     }
   }
 
   function handleRPCError(req, RPCError) {
+    var res = createErrorResponse(req, RPCError)
     stream.emit('error', new Error(RPCError.message))
-    queueResponse(createErrorResponse(req, RPCError))
+    stream.push(res)
+  }
+
+  function handleInternalError(req, err, result) {
+    var res = createErrorResponse(req, RPCErrors['INTERNAL_ERROR'])
+    res.error.data = err.message
+    res.result = result
+    stream.emit('response', req, res)
+    stream.push(res)
   }
 
   function createResultResponse(req, result) {
@@ -123,10 +128,6 @@ function RPCServer(opts) {
       'id': req.id,
       'error': err
     }
-  }
-
-  function queueResponse(res) {
-    stream.push(res)
   }
 
   return stream

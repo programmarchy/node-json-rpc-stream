@@ -4,14 +4,14 @@ var through = require('through2')
 function RPCClient(opts) {
   opts = opts || {}
 
-  var stream = through.obj(function (data, enc, next) {
+  var stream = through.obj(function write(data, enc, next) {
     if (data === null) {
-      stream.emit('error', TypeError('Argument `data` must not be null.'))
+      stream.emit('error', TypeError("Argument 'data' must not be null."))
       next()
       return
     }
     if (typeof data !== 'object') {
-      stream.emit('error', TypeError('Argument `data` must be an object.'))
+      stream.emit('error', TypeError("Argument 'data' must be an object."))
       next()
       return
     }
@@ -76,7 +76,7 @@ function RPCClient(opts) {
 
   function handleResponse(res) {
     if (!(('result' in res) || ('error' in res))) {
-      stream.emit('error', new Error('Response does not have either a `result` nor an `error` property.'))
+      stream.emit('error', new Error("Response does not have either a 'result' nor an 'error' property."))
       removePendingRequest(res.id)
       return
     }
