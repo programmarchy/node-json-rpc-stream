@@ -4,7 +4,7 @@ var RPCServer = require('../server')
 var RPCClient = require('../client')
 
 test('simple client', function (t) {
-  t.plan(20)
+  t.plan(22)
 
   var Source = {
     fooSync: function () {
@@ -12,15 +12,11 @@ test('simple client', function (t) {
     },
     fooAsync: function () {
       return function (cb) {
-        if (cb) {
-          cb(null, {
-            name: 'boom'
-          }, {
-            name: 'beep'
-          }, {
-            name: 'boop'
-          })
-        }
+        setTimeout(function() {
+          if (cb) {
+            cb(null, { boom: 'bang' })
+          }
+        }, 100)
       }
     },
     barSync: function (lhs, rhs) {
@@ -28,9 +24,11 @@ test('simple client', function (t) {
     },
     barAsync: function (lhs, rhs) {
       return function (cb) {
-        if (cb) {
-          cb(null, (lhs + rhs))
-        }
+        setTimeout(function() {
+          if (cb) {
+            cb(null, (lhs + rhs))
+          }
+        }, 100)
       }
     }
   }
@@ -62,9 +60,11 @@ test('simple client', function (t) {
     t.equal(result, 105)
   }, 5, 100)
 
-  // calls an async method with no arguments and no result
-  client.callMethod('fooAsync', function (err) {
+  // calls an async method with no arguments and a result
+  client.callMethod('fooAsync', function (err, result) {
     t.ifError(err)
+    t.ok(result.boom)
+    t.equal(result.boom, 'bang')
   })
 
   // calls an async method with arguments and a result
